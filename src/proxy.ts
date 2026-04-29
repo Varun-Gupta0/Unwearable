@@ -5,7 +5,7 @@ const isProtectedRoute = createRouteMatcher(['/admin(.*)']);
 export default clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req)) {
     const session = await auth();
-    const adminEmail = process.env.ADMIN_EMAIL || 'varungupta010307@gmail.com';
+    const adminEmail = (process.env.ADMIN_EMAIL || 'varungupta010307@gmail.com').toLowerCase();
     
     // If user is not signed in, protect() handles the redirect
     if (!session.userId) {
@@ -15,7 +15,7 @@ export default clerkMiddleware(async (auth, req) => {
 
     // Fetch user details to check email
     const user = await session.getUser();
-    const userEmail = user?.emailAddresses[0]?.emailAddress;
+    const userEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase();
 
     if (userEmail !== adminEmail) {
       // Redirect unauthorized users to home or a 403 page
