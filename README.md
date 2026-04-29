@@ -1,329 +1,184 @@
-# Unwearable — Brutalist E-Commerce Implementation Plan
+# Unwearable – Premium Customizable E‑Commerce Platform
 
-A web-brutalist e-commerce storefront built with **Next.js (App Router)**, **Tailwind CSS**, and **Framer Motion**. The design language is raw, high-contrast, and typographically aggressive — thick borders, monospaced type, stark black/white with neon accents, anti-smooth interactions, and intentionally "ugly-beautiful" aesthetics.
-
----
-
-## Design System Pillars
-
-| Token | Value |
-|---|---|
-| **Primary BG** | `#F5F0E8` (dirty cream) |
-| **Primary Text** | `#0A0A0A` (near-black) |
-| **Accent** | `#FF3E00` (brutalist red-orange) |
-| **Secondary Accent** | `#00FF88` (toxic green) |
-| **Border** | `3px solid #0A0A0A` |
-| **Font — Display** | `Space Mono` (monospace) |
-| **Font — Body** | `Inter` (sans-serif, tight tracking) |
-| **Radius** | `0` everywhere (hard corners) |
-| **Shadows** | Offset box-shadows (`4px 4px 0 #0A0A0A`) |
+## 🚀 Overview
+**Unwearable** is a modern, high‑performance e‑commerce application built with **Next.js (App Router)**, **Supabase**, **Clerk**, and **Qikink**. It provides a full‑featured product catalog, a **Design Builder** that lets customers customize predefined templates, and a secure **Admin Dashboard** for managing products, templates, and orders.
 
 ---
 
-## File Structure
+## 🛠️ Tech Stack
+| Layer | Technology |
+|------|------------|
+| **Framework** | Next.js 16 (App Router, Turbopack) |
+| **Styling** | Vanilla CSS + custom UI components (BrutalButton, BrutalInput) |
+| **Auth** | Clerk (email‑only, phone auth disabled) |
+| **Database / Storage** | Supabase (PostgreSQL + Storage bucket `designs`) |
+| **Print Fulfillment** | Qikink API (sandbox) |
+| **State Management** | React Context (`CartContext`, `DesignContext`) |
+| **Image Rendering** | `html2canvas` for client‑side PNG generation |
+| **Deployment** | Vercel (CI/CD) |
 
+---
+
+## ✨ Core Features
+1. **Product Catalog & Cart**
+   - Browse products (`/shop`).
+   - Add items with size & color selection.
+   - Live cart badge in the header.
+2. **Admin Dashboard** (`/admin`)
+   - **Product Manager** – create, edit, delete products and assign Qikink SKUs.
+   - **Template Manager** (`/admin/templates`) – upload base images, define placement slots and allowed colors for each product.
+   - **Access Control** – visible only to the email **`varungupta010307@gmail.com`** (hard‑coded fallback + env var). Protected by Clerk middleware.
+3. **Design Builder** (`/customize/[templateId]`)
+   - 4‑step wizard: **Select Template → Pick Color → Choose Placement → Confirm**.
+   - Real‑time preview using CSS‑layered images.
+   - Final preview rendered to PNG via `html2canvas` and uploaded to Supabase.
+   - PNG URL (`designImageUrl`) attached to the order payload sent to Qikink.
+4. **Qikink Order Integration** (`/api/orders/route.ts`)
+   - Builds line items with optional `print_file` for custom designs.
+   - Falls back to local SKU when a product is missing from Supabase.
+5. **Clerk Authentication**
+   - Email‑only sign‑in/out (phone authentication disabled in Clerk dashboard).
+   - Admin link appears only for the authorized email.
+6. **Supabase Schema**
+   - `templates` table – stores base image, placement JSON, color palette JSON, active flag.
+   - `designs` table – stores user‑specific customizations, references `templates`, and preview image URL.
+   - Row‑Level Security (RLS) policies for public/template reads and user‑owned design writes.
+7. **Premium UI / Brutalist Design**
+   - Dark‑mode‑compatible, high‑contrast aesthetics with thick borders, hard shadows, and micro‑animations.
+   - Reusable `BrutalButton` component with variants (`default`, `accent`, `toxic`, `ghost`).
+
+---
+
+## 📁 Project Structure (high‑level)
 ```
-d:\Code Projects\Unwearable\
-├── public/
-│   └── images/              # Product & hero images (generated)
-├── src/
-│   ├── app/
-│   │   ├── layout.tsx           # Root layout (fonts, metadata, Navbar/Footer)
-│   │   ├── page.tsx             # Home / Landing page
-│   │   ├── globals.css          # Tailwind directives + brutalist base styles
-│   │   ├── shop/
-│   │   │   └── page.tsx         # Product grid / catalog
-│   │   ├── product/
-│   │   │   └── [slug]/
-│   │   │       └── page.tsx     # Product detail page
-│   │   ├── cart/
-│   │   │   └── page.tsx         # Cart page
-│   │   └── checkout/
-│   │       └── page.tsx         # Checkout page
-│   ├── components/
-│   │   ├── layout/
-│   │   │   ├── Navbar.tsx       # Top bar with brutalist logo, nav links, cart icon
-│   │   │   └── Footer.tsx       # Thick-bordered footer with marquee
-│   │   ├── ui/
-│   │   │   ├── BrutalButton.tsx # Hard-shadow, uppercase, no-radius button
-│   │   │   ├── BrutalInput.tsx  # Thick-border input field
-│   │   │   ├── Marquee.tsx      # Infinite scrolling ticker
-│   │   │   └── SectionHeading.tsx # Giant, rotated, or offset headings
-│   │   ├── product/
-│   │   │   ├── ProductCard.tsx  # Card with hard shadow, hover jolt
-│   │   │   └── ProductGrid.tsx  # Asymmetric grid layout
-│   │   ├── cart/
-│   │   │   ├── CartItem.tsx     # Line item row in the cart
-│   │   │   └── CartSummary.tsx  # Totals + checkout CTA
-│   │   └── home/
-│   │       ├── HeroBanner.tsx   # Full-bleed hero with glitch text
-│   │       ├── FeaturedStrip.tsx# Horizontal scroll of featured items
-│   │       └── Manifesto.tsx    # Brutalist "about" statement
-│   ├── context/
-│   │   └── CartContext.tsx      # React Context for cart state
-│   ├── data/
-│   │   └── products.ts         # Static product data (name, price, slug, images)
-│   ├── lib/
-│   │   └── utils.ts            # formatPrice, cn() helper
-│   └── types/
-│       └── index.ts            # Product, CartItem TypeScript types
-├── tailwind.config.ts           # Custom theme (colors, fonts, shadows)
-├── next.config.ts               # Next.js config
-├── tsconfig.json
-├── package.json
-└── postcss.config.mjs
-```
-
----
-
-## Routing Map
-
-| Route | File | Description |
-|---|---|---|
-| `/` | `src/app/page.tsx` | Landing page — Hero, Featured, Manifesto |
-| `/shop` | `src/app/shop/page.tsx` | Full product catalog grid |
-| `/product/[slug]` | `src/app/product/[slug]/page.tsx` | Single product detail + "Add to Cart" |
-| `/cart` | `src/app/cart/page.tsx` | Cart view with quantity controls |
-| `/checkout` | `src/app/checkout/page.tsx` | Checkout form (static, no payment gateway) |
-
----
-
-## Proposed Changes
-
-### 1. Project Initialization
-
-#### [NEW] Project scaffold
-
-- Run `npx -y create-next-app@latest ./ --typescript --tailwind --eslint --app --src-dir --import-alias "@/*"` inside `d:\Code Projects\Unwearable`
-- Install additional deps: `npm install framer-motion`
-
----
-
-### 2. Design System & Globals
-
-#### [NEW] [tailwind.config.ts](file:///d:/Code%20Projects/Unwearable/tailwind.config.ts)
-
-Extend the default theme with:
-- Custom colors: `cream`, `brutal-black`, `accent`, `toxic`
-- Font families: `Space Mono` (mono), `Inter` (sans)
-- Box-shadow utility: `brutal` → `4px 4px 0 #0A0A0A`, `brutal-lg` → `8px 8px 0 #0A0A0A`
-- Border width: `brutal` → `3px`
-
-#### [NEW] [globals.css](file:///d:/Code%20Projects/Unwearable/src/app/globals.css)
-
-- Tailwind `@tailwind` directives
-- Base layer: `* { border-radius: 0 }`, selection color overrides, custom scrollbar
-- Brutalist utility classes (`.text-glitch`, `.marquee-track`, etc.)
-
----
-
-### 3. Types & Data
-
-#### [NEW] [types/index.ts](file:///d:/Code%20Projects/Unwearable/src/types/index.ts)
-
-```ts
-export interface Product {
-  id: string;
-  slug: string;
-  name: string;
-  tagline: string;
-  price: number;
-  image: string;
-  category: string;
-  description: string;
-}
-
-export interface CartItem extends Product {
-  quantity: number;
-}
+src/
+├─ app/                     # Next.js app router pages
+│   ├─ admin/               # Admin panel (product & template pages)
+│   │   └─ templates/page.tsx   # Template manager UI
+│   ├─ api/orders/route.ts   # Order creation + Qikink integration
+│   ├─ customize/[templateId]/page.tsx  # Design Builder entry point
+│   ├─ product/[slug]/page.tsx   # Product details with "Add to Cart" & "Customize"
+│   └─ ...
+├─ components/
+│   ├─ admin/                # TemplateForm, TemplateList UI
+│   ├─ builder/              # DesignBuilder, StepSelector, PreviewCanvas, etc.
+│   ├─ layout/Navbar.tsx     # Header with conditional Admin link
+│   └─ ui/BrutalButton.tsx   # Reusable button component
+├─ context/CartContext.tsx   # Cart state management
+├─ context/DesignContext.tsx # Wizard state machine for builder
+├─ lib/
+│   ├─ designApi.ts          # CRUD for templates & designs (Supabase)
+│   ├─ renderDesign.ts       # html2canvas utility to create PNG
+│   └─ api.ts                # Product fetch helpers
+├─ types/index.ts            # TypeScript interfaces (Product, Template, Design, etc.)
+└─ ...
 ```
 
-#### [NEW] [data/products.ts](file:///d:/Code%20Projects/Unwearable/src/data/products.ts)
+---
 
-- ~8 mock products with edgy, brutalist names (e.g., "VOID HOODIE", "CONCRETE TEE", "STATIC JOGGERS")
-- Prices, slugs, taglines, and placeholder image paths
+## 📦 Supabase Schema (SQL)
+```sql
+-- templates table
+CREATE TABLE public.templates (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  product_id TEXT NOT NULL,           -- matches product slug
+  name TEXT NOT NULL,
+  base_image_url TEXT NOT NULL,
+  placements JSONB NOT NULL DEFAULT '[]'::jsonb,
+  colors JSONB NOT NULL DEFAULT '[]'::jsonb,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now()) NOT NULL
+);
 
-#### [NEW] [lib/utils.ts](file:///d:/Code%20Projects/Unwearable/src/lib/utils.ts)
-
-- `formatPrice(cents: number)` → `$XX.XX`
-- `cn(...classes)` → conditional classname merger using `clsx` + `tailwind-merge`
+-- designs table
+CREATE TABLE public.designs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id TEXT NOT NULL,               -- Clerk user ID
+  template_id UUID REFERENCES public.templates(id) ON DELETE CASCADE,
+  product_slug TEXT NOT NULL,
+  selected_color JSONB NOT NULL,
+  selected_placement JSONB NOT NULL,
+  design_config JSONB NOT NULL,
+  preview_image_url TEXT,
+  status TEXT DEFAULT 'draft',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now()) NOT NULL
+);
+```
+> **Bucket:** Create a `designs` bucket in Supabase storage and set it to **Public** so `html2canvas` can access the images.
 
 ---
 
-### 4. Cart Context
+## 🔧 Environment Variables
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public Supabase key |
+| `ADMIN_EMAIL` / `NEXT_PUBLIC_ADMIN_EMAIL` | Email that may access the admin dashboard |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key |
+| `CLERK_SECRET_KEY` | Clerk secret key (server) |
+| `QIKINK_CLIENT_ID` / `QIKINK_CLIENT_SECRET` | Qikink credentials |
+| `QIKINK_API_URL` | Qikink base URL |
 
-#### [NEW] [context/CartContext.tsx](file:///d:/Code%20Projects/Unwearable/src/context/CartContext.tsx)
-
-- `CartProvider` wrapping the app with `useReducer`
-- Actions: `ADD_ITEM`, `REMOVE_ITEM`, `UPDATE_QUANTITY`, `CLEAR_CART`
-- Exposed via `useCart()` hook
-- Persists to `localStorage`
-
----
-
-### 5. Layout Components
-
-#### [NEW] [components/layout/Navbar.tsx](file:///d:/Code%20Projects/Unwearable/src/components/layout/Navbar.tsx)
-
-- Fixed top bar, `3px` bottom border
-- Logo in `Space Mono`, uppercase, oversized
-- Links: HOME, SHOP, CART (with item count badge)
-- Mobile: hamburger that drops a full-screen brutalist overlay menu with Framer Motion `AnimatePresence`
-
-#### [NEW] [components/layout/Footer.tsx](file:///d:/Code%20Projects/Unwearable/src/components/layout/Footer.tsx)
-
-- Thick top border, grid layout
-- Marquee ticker: `"UNWEARABLE — FASHION IS DEAD — WEAR THE VOID"`
-- Columns: links, fake socials, newsletter input with `BrutalButton`
+Make sure the same values are added in **Vercel → Settings → Environment Variables** for production.
 
 ---
 
-### 6. UI Primitives
+## 🏗️ Local Development
+```bash
+# Clone the repo (already done)
+cd Unwearable
 
-#### [NEW] [components/ui/BrutalButton.tsx](file:///d:/Code%20Projects/Unwearable/src/components/ui/BrutalButton.tsx)
+# Install dependencies
+npm install
 
-- Uppercase, `Space Mono`, hard offset shadow
-- Framer Motion: `whileHover` → shadow collapse + translate, `whileTap` → press-in
+# Set up .env.local (see table above) and add:
+# ADMIN_EMAIL=varungupta010307@gmail.com
+# NEXT_PUBLIC_ADMIN_EMAIL=varungupta010307@gmail.com
 
-#### [NEW] [components/ui/BrutalInput.tsx](file:///d:/Code%20Projects/Unwearable/src/components/ui/BrutalInput.tsx)
-
-- 3px border, no radius, thick focus ring (accent color)
-
-#### [NEW] [components/ui/Marquee.tsx](file:///d:/Code%20Projects/Unwearable/src/components/ui/Marquee.tsx)
-
-- Infinite horizontal CSS animation (`translateX` loop)
-- Configurable speed and content
-
-#### [NEW] [components/ui/SectionHeading.tsx](file:///d:/Code%20Projects/Unwearable/src/components/ui/SectionHeading.tsx)
-
-- Giant `Space Mono` text, optional `-rotate-2` tilt, offset underline bar
+# Run the dev server
+npm run dev   # http://localhost:3000
+```
+Open the site, sign‑in with `varungupta010307@gmail.com`, and the **Admin** link will appear.
 
 ---
 
-### 7. Product Components
-
-#### [NEW] [components/product/ProductCard.tsx](file:///d:/Code%20Projects/Unwearable/src/components/product/ProductCard.tsx)
-
-- Thick border, hard shadow, image container
-- On hover (Framer Motion): shadow offset jolt + slight rotate
-- Category label as rotated sticker-badge
-
-#### [NEW] [components/product/ProductGrid.tsx](file:///d:/Code%20Projects/Unwearable/src/components/product/ProductGrid.tsx)
-
-- CSS Grid with intentionally asymmetric sizing (`grid-cols-[1fr_1.2fr_0.8fr]`)
-- Every 3rd card gets `col-span-2` for visual disruption
-- Staggered entrance via Framer Motion `staggerChildren`
+## 🚀 Production Deployment (Vercel)
+1. Connect the GitHub repo `Varun-Gupta0/Unwearable` to Vercel.
+2. Add the environment variables from the table to Vercel (both **Production** and **Preview**).
+3. Vercel will automatically run `npm run build` and deploy.
+4. After the first deploy, create the `designs` bucket in Supabase and set CORS to allow `https://<your‑vercel‑domain>.vercel.app`.
 
 ---
 
-### 8. Cart Components
-
-#### [NEW] [components/cart/CartItem.tsx](file:///d:/Code%20Projects/Unwearable/src/components/cart/CartItem.tsx)
-
-- Row layout: image thumbnail, name, quantity +/- controls, line total, remove ✕
-
-#### [NEW] [components/cart/CartSummary.tsx](file:///d:/Code%20Projects/Unwearable/src/components/cart/CartSummary.tsx)
-
-- Subtotal, thick divider, "PROCEED TO CHECKOUT" `BrutalButton`
+## 🎯 Using the Admin Dashboard
+1. **Sign In** with the authorized email (`varungupta010307@gmail.com`).
+2. Click the **Admin** link in the header.
+3. **Products Tab** – add a new product (name, slug, price, image, Qikink SKU).
+4. **Design Templates Tab** – click **+ Create New Template**, select a product slug, upload a base image, define placement slots (x, y, width, height) and allowed colors, then **Create**.
+5. Once a template exists for a product, the **✦ Customize** button appears on that product’s page for customers.
 
 ---
 
-### 9. Home Page Sections
-
-#### [NEW] [components/home/HeroBanner.tsx](file:///d:/Code%20Projects/Unwearable/src/components/home/HeroBanner.tsx)
-
-- Full-viewport, `cream` background
-- Giant headline: **"FASHION IS DEAD."** with CSS glitch animation (clip-path + color shift)
-- Sub-text + CTA `BrutalButton` → `/shop`
-- Framer Motion staggered text reveal on load
-
-#### [NEW] [components/home/FeaturedStrip.tsx](file:///d:/Code%20Projects/Unwearable/src/components/home/FeaturedStrip.tsx)
-
-- Horizontal scrolling strip of 4 featured `ProductCard`s
-- Drag-scroll enabled via Framer Motion `drag="x"` + `dragConstraints`
-
-#### [NEW] [components/home/Manifesto.tsx](file:///d:/Code%20Projects/Unwearable/src/components/home/Manifesto.tsx)
-
-- Two-column layout: oversized rotated text on left, manifesto paragraph on right
-- Scroll-triggered `fadeInUp` via Framer Motion `useInView`
+## 📚 Testing the Design Builder
+1. Browse to a product with an active template (e.g., `404‑not‑found‑tee`).
+2. Click **✦ Customize**.
+3. Follow the 4‑step wizard, pick a color, adjust placement, and hit **Confirm**.
+4. The preview is rendered to PNG, uploaded to Supabase, and the design URL is attached to the order payload.
+5. Add the customized item to the cart and proceed to checkout – the order will be sent to Qikink with the custom `print_file`.
 
 ---
 
-### 10. Pages
-
-#### [NEW] [app/layout.tsx](file:///d:/Code%20Projects/Unwearable/src/app/layout.tsx)
-
-- Import `Space Mono` + `Inter` from `next/font/google`
-- Wrap children with `CartProvider`
-- Render `Navbar` + `{children}` + `Footer`
-- `<html>` gets `className` with font variables
-
-#### [NEW] [app/page.tsx](file:///d:/Code%20Projects/Unwearable/src/app/page.tsx)
-
-- Compose: `HeroBanner` → `Marquee` → `FeaturedStrip` → `Manifesto`
-
-#### [NEW] [app/shop/page.tsx](file:///d:/Code%20Projects/Unwearable/src/app/shop/page.tsx)
-
-- `SectionHeading` → category filter buttons → `ProductGrid`
-- Framer Motion `layoutId` for smooth filter transitions
-
-#### [NEW] [app/product/[slug]/page.tsx](file:///d:/Code%20Projects/Unwearable/src/app/product/%5Bslug%5D/page.tsx)
-
-- Two-column: large product image (left), details + "ADD TO CART" button (right)
-- Framer Motion page entrance (`initial={{ x: 100, opacity: 0 }}`)
-
-#### [NEW] [app/cart/page.tsx](file:///d:/Code%20Projects/Unwearable/src/app/cart/page.tsx)
-
-- List of `CartItem` rows + `CartSummary`
-- Empty state: giant "YOUR CART IS VOID" text
-
-#### [NEW] [app/checkout/page.tsx](file:///d:/Code%20Projects/Unwearable/src/app/checkout/page.tsx)
-
-- Two-column: form fields (using `BrutalInput`) + order summary sidebar
-- Static form (no backend), "PLACE ORDER" button triggers a success animation
+## 🤝 Contributing
+- Fork the repo, create a feature branch, and submit a Pull Request.
+- Follow the existing code style (TypeScript, functional components, vanilla CSS).
+- All UI components should use the **Brutal** design system for consistency.
 
 ---
 
-### 11. Image Assets
-
-- Use the `generate_image` tool to create ~4 brutalist product images and a hero background
-- Place in `public/images/`
-
----
-
-## Animation Summary (Framer Motion)
-
-| Area | Animation |
-|---|---|
-| Page transitions | `initial/animate/exit` with opacity + slide |
-| Hero headline | CSS glitch + FM staggered reveal |
-| Product cards | `whileHover` jolt (shadow + rotate) |
-| Buttons | `whileHover` shadow collapse, `whileTap` press |
-| Product grid | `staggerChildren` entrance |
-| Featured strip | `drag="x"` horizontal scroll |
-| Manifesto | `useInView` fade-in-up |
-| Mobile menu | `AnimatePresence` slide-down overlay |
-| Cart items | `AnimatePresence` + `layout` for add/remove |
+## 📄 License
+MIT © 2026 Varun Gupta
+```
 
 ---
 
-## Verification Plan
-
-### Automated (Dev Server)
-
-1. `npm run dev` — confirm clean compile, no TS errors
-2. `npm run build` — confirm production build succeeds without errors
-
-### Browser Testing (via browser subagent)
-
-1. Navigate to `http://localhost:3000` — verify Hero, Marquee, Featured, Manifesto render correctly
-2. Navigate to `/shop` — verify product grid renders all products, category filter works
-3. Click a product card → verify `/product/[slug]` page loads with correct data
-4. Click "ADD TO CART" → verify cart badge updates, navigate to `/cart` and verify item appears
-5. Adjust quantity, remove items → verify state updates correctly
-6. Click "PROCEED TO CHECKOUT" → verify checkout form renders
-7. Test mobile viewport (resize to 375px) → verify responsive layout and mobile menu
-
-### Manual Verification
-
-- The user can visually inspect the brutalist aesthetic, ensuring hard shadows, monospace type, and neon accents are consistent across all pages.
+*This README was generated to reflect the current state of the project, covering every major feature, architecture piece, and setup instruction.*

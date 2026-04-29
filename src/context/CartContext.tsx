@@ -16,10 +16,18 @@ interface AddToCartItem extends Product {
   designImageUrl?: string;
 }
 
+// Composite key that uniquely identifies a cart slot
+interface CartItemKey {
+  id: string;
+  selectedSize?: string;
+  selectedColorId?: string;
+  designId?: string;
+}
+
 type CartAction =
   | { type: "ADD_ITEM"; payload: AddToCartItem }
-  | { type: "REMOVE_ITEM"; payload: string }
-  | { type: "UPDATE_QUANTITY"; payload: { id: string; quantity: number } }
+  | { type: "REMOVE_ITEM"; payload: CartItemKey }
+  | { type: "UPDATE_QUANTITY"; payload: CartItemKey & { quantity: number } }
   | { type: "CLEAR_CART" };
 
 type CartState = {
@@ -29,12 +37,14 @@ type CartState = {
 const CartContext = createContext<{
   items: CartItem[];
   addItem: (product: AddToCartItem) => void;
-  removeItem: (id: string) => void;
-  updateQuantity: (id: string, quantity: number) => void;
+  removeItem: (key: CartItemKey) => void;
+  updateQuantity: (key: CartItemKey, quantity: number) => void;
   clearCart: () => void;
   totalItems: number;
   totalPrice: number;
 } | null>(null);
+
+export type { CartItemKey };
 
 function cartReducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
@@ -70,20 +80,34 @@ function cartReducer(state: CartState, action: CartAction): CartState {
         }],
       };
     }
-    case "REMOVE_ITEM":
+    case "REMOVE_ITEM": {
+      const key = action.payload;
       return {
         ...state,
-        items: state.items.filter((item) => item.id !== action.payload),
+        items: state.items.filter(
+          (item) => !(
+            item.id === key.id &&
+            item.selectedSize === key.selectedSize &&
+            item.selectedColorId === key.selectedColorId &&
+            (item.designId ?? undefined) === (key.designId ?? undefined)
+          )
+        ),
       };
-    case "UPDATE_QUANTITY":
+    }
+    case "UPDATE_QUANTITY": {
+      const key = action.payload;
       return {
         ...state,
         items: state.items.map((item) =>
-          item.id === action.payload.id
-            ? { ...item, quantity: action.payload.quantity }
+          item.id === key.id &&
+          item.selectedSize === key.selectedSize &&
+          item.selectedColorId === key.selectedColorId &&
+          (item.designId ?? undefined) === (key.designId ?? undefined)
+            ? { ...item, quantity: key.quantity }
             : item
         ),
       };
+    }
     case "CLEAR_CART":
       return { items: [] };
     default:
@@ -117,15 +141,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "ADD_ITEM", payload: product });
   };
 
-  const removeItem = (id: string) => {
-    dispatch({ type: "REMOVE_ITEM", payload: id });
+  const removeItem = (key: CartItemKey) => {
+    dispatch({ type: "REMOVE_ITEM", payload: key });
   };
 
-  const updateQuantity = (id: string, quantity: number) => {
+  const updateQuantity = (key: CartItemKey, quantity: number) => {
     if (quantity <= 0) {
-      dispatch({ type: "REMOVE_ITEM", payload: id });
+      dispatch({ type: "REMOVE_ITEM", payload: key });
     } else {
-      dispatch({ type: "UPDATE_QUANTITY", payload: { id, quantity } });
+      dispatch({ type: "UPDATE_QUANTITY", payload: { ...key, quantity } });
     }
   };
 

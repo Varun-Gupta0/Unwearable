@@ -11,14 +11,17 @@ export async function renderDesignToBlob(
   if (!previewRef.current) return null;
 
   try {
+    // Wait for all custom fonts to load before capturing
+    await document.fonts.ready;
+
     // Dynamically import to keep it client-only and avoid SSR issues
     const html2canvas = (await import("html2canvas")).default;
 
     const canvas = await html2canvas(previewRef.current, {
-      useCORS: true,       // Required for cross-origin Supabase images
+      useCORS: true,        // Required for cross-origin Supabase images
       allowTaint: false,
-      scale: 2,            // 2x resolution for sharper output
-      backgroundColor: null,
+      scale: 5,             // 5× resolution → ~300 DPI for a standard print area
+      backgroundColor: "#ffffff",
       logging: false,
     });
 
@@ -26,11 +29,11 @@ export async function renderDesignToBlob(
       canvas.toBlob(
         (blob) => resolve(blob),
         "image/png",
-        0.95
+        0.92
       );
     });
   } catch (err) {
-    console.error("renderDesignToBlob failed:", err);
+    console.error("[renderDesign] renderDesignToBlob failed:", err);
     return null;
   }
 }

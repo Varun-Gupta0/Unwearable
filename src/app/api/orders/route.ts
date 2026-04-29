@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { supabase } from "@/lib/supabase";
 
 interface OrderItem {
@@ -105,6 +106,9 @@ async function getProductStoreSku(slug: string, colorId?: string, sizeId?: strin
 
 const QIKINK_BASE_URL = process.env.QIKINK_API_URL || "https://api.qikink.com";
 
+// ─── Token Cache (in-memory, reused across requests in the same serverless instance) ─
+let _tokenCache: { token: string; expiresAt: number } | null = null;
+
 async function getQikinkAccessToken(): Promise<{ token?: string; error?: string }> {
   const clientId = process.env.QIKINK_CLIENT_ID;
   const clientSecret = process.env.QIKINK_CLIENT_SECRET;
@@ -113,15 +117,17 @@ async function getQikinkAccessToken(): Promise<{ token?: string; error?: string 
     return { error: "Qikink API credentials not configured" };
   }
 
+  // Return cached token if still valid (55-min TTL to account for clock drift)
+  if (_tokenCache && Date.now() < _tokenCache.expiresAt) {
+    return { token: _tokenCache.token };
+  }
+
   try {
     const tokenUrl = `${QIKINK_BASE_URL}/api/token`;
-    console.log("QIKINK TOKEN URL:", tokenUrl);
 
     const response = await fetch(tokenUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         ClientId: clientId,
         client_secret: clientSecret,
@@ -129,13 +135,15 @@ async function getQikinkAccessToken(): Promise<{ token?: string; error?: string 
     });
 
     const data = await response.json();
-    console.log("QIKINK TOKEN RESPONSE:", response.status, JSON.stringify(data));
 
     if (!response.ok || !data.Accesstoken) {
+      console.error("[Qikink] Token request failed:", response.status);
       return { error: data.error || data.message || `Token request failed: ${response.status}` };
     }
 
-    return { token: data.Accesstoken };
+    // Cache token for 55 minutes
+    _tokenCache = { token: data.Accesstoken, expiresAt: Date.now() + 55 * 60 * 1000 };
+    return { token: _tokenCache.token };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return { error: `Token fetch error: ${errorMessage}` };
@@ -178,6 +186,15 @@ async function createQikinkOrder(payload: QikinkOrderPayload): Promise<{ success
 }
 
 export async function POST(request: NextRequest) {
+  // ── Auth guard: require a signed-in Clerk session ──────────────────────────
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json(
+      { error: "You must be signed in to place an order." },
+      { status: 401 }
+    );
+  }
+
   try {
     const body: OrderPayload = await request.json();
 
@@ -238,8 +255,8 @@ export async function POST(request: NextRequest) {
     const orderNumber = generateOrderId();
     const totalOrderValue = body.totalOrderValue || lineItems.reduce((sum, li) => sum + li.price * li.quantity, 0);
 
-    const cleanPhone = customer.phone.replace(/\\D/g, "");
-    const cleanZip = parseInt(customer.pincode.replace(/\\D/g, ""), 10) || 0;
+    const cleanPhone = customer.phone.replace(/\D/g, "");
+    const cleanZip = parseInt(customer.pincode.replace(/\D/g, ""), 10) || 0;
 
     const qikinkPayload: QikinkOrderPayload = {
       order_number: orderNumber,
@@ -261,7 +278,7 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    console.log("QIKINK PAYLOAD:", JSON.stringify(qikinkPayload, null, 2));
+    console.log(`[Order] Creating order ${orderNumber} for ${sanitizedEmail} with ${lineItems.length} item(s)`);
 
     const result = await createQikinkOrder(qikinkPayload);
 

@@ -21,6 +21,7 @@ interface FormData {
 export default function CheckoutPage() {
   const { items, totalPrice, clearCart } = useCart();
   const [submitted, setSubmitted] = useState(false);
+  const [orderId, setOrderId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>({
@@ -71,7 +72,11 @@ export default function CheckoutPage() {
         price: item.price,
         selectedSize: item.selectedSize,
         selectedColorId: item.selectedColorId,
+        // Pass design fields for custom print fulfillment
+        designId: item.designId,
+        designImageUrl: item.designImageUrl,
       })),
+      totalOrderValue: totalPrice,
     };
 
     try {
@@ -88,6 +93,7 @@ export default function CheckoutPage() {
       }
 
       clearCart();
+      setOrderId(data.order_id ?? null);
       setSubmitted(true);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error";
@@ -112,8 +118,15 @@ export default function CheckoutPage() {
           <h2 className="font-mono text-2xl md:text-3xl font-bold uppercase mb-8 text-brutal-black">
             Regret Imminent.
           </h2>
+          {orderId && (
+            <div className="border-brutal border-3 border-brutal-black p-4 mb-6 bg-cream/80">
+              <p className="font-mono text-xs uppercase text-brutal-black/60">Order ID</p>
+              <p className="font-mono text-lg font-bold tracking-widest">{orderId}</p>
+              <p className="font-sans text-xs text-brutal-black/50 mt-1">Save this for your records</p>
+            </div>
+          )}
           <p className="font-sans text-lg mb-8">
-            Thanks for nothing. We&apos;ll send you absolutely nothing.
+            Your order has been placed. We&apos;ll get it printed and shipped to you.
           </p>
           <BrutalButton href="/shop">Continue Shopping</BrutalButton>
         </motion.div>
