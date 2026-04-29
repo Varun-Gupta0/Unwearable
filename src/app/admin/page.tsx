@@ -98,9 +98,15 @@ export default function AdminPage() {
         </div>
         <a
           href="/admin/templates"
+          className="flex-1 px-6 py-3 font-mono text-sm uppercase bg-cream text-brutal-black hover:bg-accent hover:text-cream transition-colors text-center border-r-brutal border-r-3"
+        >
+          Templates
+        </a>
+        <a
+          href="/admin/orders"
           className="flex-1 px-6 py-3 font-mono text-sm uppercase bg-cream text-brutal-black hover:bg-accent hover:text-cream transition-colors text-center"
         >
-          Design Templates
+          Orders
         </a>
       </div>
 

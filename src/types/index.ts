@@ -66,3 +66,83 @@ export interface Design {
   status: "draft" | "confirmed" | "ordered";
   created_at: string;
 }
+
+// ─── Orders & Payments ────────────────────────────────────────────────────────
+
+export type OrderStatus =
+  | "pending"
+  | "paid"
+  | "processing"
+  | "fulfilled"
+  | "failed"
+  | "cancelled";
+
+export type PaymentStatus = "created" | "captured" | "failed" | "refunded";
+
+export interface OrderItem {
+  slug: string;
+  name: string;
+  quantity: number;
+  price: number;
+  selectedSize: string;
+  selectedColorId: string;
+  designId?: string;
+  designImageUrl?: string;
+}
+
+export interface ShippingAddress {
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+}
+
+export interface Payment {
+  id: string;
+  gateway: string;
+  gateway_order_id: string;
+  gateway_payment_id?: string;
+  amount: number;
+  currency: string;
+  status: PaymentStatus;
+  verified: boolean;
+  webhook_payload?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Order {
+  id: string;
+  order_number: string;
+  user_id: string;
+  status: OrderStatus;
+  customer_name: string;
+  customer_email: string;
+  customer_phone?: string;
+  shipping_address: ShippingAddress;
+  items: OrderItem[];
+  subtotal: number;
+  total_amount: number;
+  payment_id?: string;
+  payments?: Payment;         // joined via Supabase select
+  qikink_order_id?: string;
+  qikink_response?: Record<string, unknown>;
+  retry_count: number;
+  error_message?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ErrorLog {
+  id: string;
+  context: string;
+  severity: "info" | "warn" | "error" | "critical";
+  message: string;
+  payload?: Record<string, unknown>;
+  user_id?: string;
+  order_id?: string;
+  created_at: string;
+}
