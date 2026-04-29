@@ -15,7 +15,7 @@ export default function Navbar() {
   const { totalItems } = useCart();
   const { isSignedIn, user } = useUser();
 
-  const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+  const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'varungupta010307@gmail.com';
   const isAdmin = isSignedIn && user?.emailAddresses[0]?.emailAddress === adminEmail;
 
   return (
