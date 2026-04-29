@@ -5,7 +5,12 @@ const isProtectedRoute = createRouteMatcher(['/admin(.*)']);
 export default clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req)) {
     const session = await auth();
-    const adminEmail = (process.env.ADMIN_EMAIL || 'varungupta010307@gmail.com').toLowerCase();
+    const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase();
+
+    if (!adminEmail) {
+      console.error("[Middleware] ADMIN_EMAIL env var not set!");
+      return Response.redirect(new URL('/', req.url));
+    }
 
     // If user is not signed in, protect() handles the redirect to sign-in
     if (!session.userId) {

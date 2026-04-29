@@ -114,6 +114,15 @@ export async function POST(request: NextRequest) {
     }, { status: 409 });
   }
 
+  // ── Guard: Ensure custom designs have an image URL ──────────────────────
+  // (Prevents blank prints if render/upload failed but order was still placed)
+  const missingDesign = order.items.find((i: any) => i.designId && !i.designImageUrl);
+  if (missingDesign) {
+    const errorMsg = `Item "${missingDesign.name}" is missing its design image URL.`;
+    await log("order_submit_guard", errorMsg, { severity: "critical", order_id });
+    return NextResponse.json({ error: errorMsg }, { status: 422 });
+  }
+
   // ── Mark as processing ───────────────────────────────────────────────────
   await supabaseAdmin.from("orders").update({ status: "processing" }).eq("id", order_id);
 

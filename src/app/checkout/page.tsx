@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import Script from "next/script";
 import { motion } from "framer-motion";
 import BrutalButton from "@/components/ui/BrutalButton";
 import BrutalInput from "@/components/ui/BrutalInput";
 import { useCart } from "@/context/CartContext";
+import { useUser } from "@clerk/nextjs";
 import { formatPrice } from "@/lib/utils";
 
-interface FormData {
+interface CheckoutForm {
   firstName: string;
   lastName: string;
   email: string;
@@ -18,16 +20,25 @@ interface FormData {
   pincode: string;
 }
 
+declare global {
+  interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Razorpay: new (options: Record<string, unknown>) => { open: () => void };
+  }
+}
+
 export default function CheckoutPage() {
   const { items, totalPrice, clearCart } = useCart();
+  const { user } = useUser();
   const [submitted, setSubmitted] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [orderNumber, setOrderNumber] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<CheckoutForm>({
     firstName: "",
     lastName: "",
-    email: "",
+    email: user?.primaryEmailAddress?.emailAddress ?? "",
     phone: "",
     address: "",
     city: "",
@@ -56,48 +67,98 @@ export default function CheckoutPage() {
     setLoading(true);
     setError(null);
 
-    const payload = {
-      customer: {
-        name: `${formData.firstName} ${formData.lastName}`.trim(),
-        email: formData.email,
-        phone: formData.phone,
-        address: formData.address,
-        city: formData.city,
-        state: formData.state,
-        pincode: formData.pincode,
-      },
-      items: items.map((item) => ({
-        slug: item.slug,
-        quantity: item.quantity,
-        price: item.price,
-        selectedSize: item.selectedSize,
-        selectedColorId: item.selectedColorId,
-        // Pass design fields for custom print fulfillment
-        designId: item.designId,
-        designImageUrl: item.designImageUrl,
-      })),
-      totalOrderValue: totalPrice,
-    };
-
     try {
-      const response = await fetch("/api/orders", {
+      // ── Step 1: Create Razorpay order + save pending order in DB ──────────
+      const createRes = await fetch("/api/payment/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          customer: {
+            name: `${formData.firstName} ${formData.lastName}`.trim(),
+            email: formData.email,
+            phone: formData.phone,
+            address: formData.address,
+            city: formData.city,
+            state: formData.state,
+            pincode: formData.pincode,
+          },
+          items: items.map((item) => ({
+            slug: item.slug,
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            selectedSize: item.selectedSize,
+            selectedColorId: item.selectedColorId,
+            designId: item.designId,
+            designImageUrl: item.designImageUrl,
+          })),
+          totalAmount: Math.round(totalPrice * 100), // convert ₹ to paise
+        }),
       });
 
-      const data = await response.json();
+      const createData = await createRes.json();
+      if (!createRes.ok) throw new Error(createData.error || "Failed to create payment order.");
 
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || data.details || "Order failed");
-      }
+      const { rz_order_id, rz_key, order_id, order_number } = createData;
 
-      clearCart();
-      setOrderId(data.order_id ?? null);
-      setSubmitted(true);
+      // ── Step 2: Open Razorpay checkout modal ──────────────────────────────
+      await new Promise<void>((resolve, reject) => {
+        const rzp = new window.Razorpay({
+          key: rz_key,
+          amount: Math.round(totalPrice * 100),
+          currency: "INR",
+          name: "Unwearable",
+          description: `Order ${order_number}`,
+          order_id: rz_order_id,
+          prefill: {
+            name: `${formData.firstName} ${formData.lastName}`.trim(),
+            email: formData.email,
+            contact: formData.phone,
+          },
+          theme: { color: "#FF3E00" },
+          handler: async (response: {
+            razorpay_order_id: string;
+            razorpay_payment_id: string;
+            razorpay_signature: string;
+          }) => {
+            try {
+              // ── Step 3: Verify payment HMAC signature on server ────────────
+              const verifyRes = await fetch("/api/payment/verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  rz_order_id: response.razorpay_order_id,
+                  rz_payment_id: response.razorpay_payment_id,
+                  rz_signature: response.razorpay_signature,
+                  order_id,
+                }),
+              });
+
+              const verifyData = await verifyRes.json();
+              if (!verifyRes.ok || !verifyData.success) {
+                throw new Error(verifyData.error || "Payment verification failed.");
+              }
+
+              // ── Step 4: Success — clear cart and show confirmation ─────────
+              clearCart();
+              setOrderId(order_id);
+              setOrderNumber(order_number);
+              setSubmitted(true);
+              resolve();
+            } catch (err) {
+              reject(err);
+            }
+          },
+          modal: {
+            ondismiss: () => {
+              reject(new Error("Payment cancelled. Your cart has been preserved."));
+            },
+          },
+        });
+        rzp.open();
+      });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Unknown error";
-      setError(errorMessage);
+      setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
     }
@@ -112,21 +173,35 @@ export default function CheckoutPage() {
           className="border-brutal border-3 border-brutal-black p-12 bg-cream"
           style={{ boxShadow: "8px 8px 0 #0A0A0A" }}
         >
+          <div className="text-5xl mb-4">✓</div>
           <h1 className="font-mono text-4xl md:text-5xl font-bold uppercase mb-4 text-accent">
-            Order Secured.
+            Order Confirmed.
           </h1>
-          <h2 className="font-mono text-2xl md:text-3xl font-bold uppercase mb-8 text-brutal-black">
-            Regret Imminent.
+          <h2 className="font-mono text-xl font-bold uppercase mb-8 text-brutal-black">
+            We&apos;re printing your design.
           </h2>
-          {orderId && (
-            <div className="border-brutal border-3 border-brutal-black p-4 mb-6 bg-cream/80">
-              <p className="font-mono text-xs uppercase text-brutal-black/60">Order ID</p>
-              <p className="font-mono text-lg font-bold tracking-widest">{orderId}</p>
-              <p className="font-sans text-xs text-brutal-black/50 mt-1">Save this for your records</p>
+
+          <div className="border-brutal border-3 border-brutal-black p-6 mb-8 text-left space-y-3">
+            {orderNumber && (
+              <div className="flex justify-between font-mono text-sm">
+                <span className="text-brutal-black/60 uppercase">Order Number</span>
+                <span className="font-bold tracking-widest">{orderNumber}</span>
+              </div>
+            )}
+            {orderId && (
+              <div className="flex justify-between font-mono text-sm">
+                <span className="text-brutal-black/60 uppercase">Order ID</span>
+                <span className="font-bold text-xs">{orderId}</span>
+              </div>
+            )}
+            <div className="flex justify-between font-mono text-sm">
+              <span className="text-brutal-black/60 uppercase">Total Paid</span>
+              <span className="font-bold text-accent">{formatPrice(totalPrice)}</span>
             </div>
-          )}
-          <p className="font-sans text-lg mb-8">
-            Your order has been placed. We&apos;ll get it printed and shipped to you.
+          </div>
+
+          <p className="font-sans text-sm text-brutal-black/60 mb-8">
+            A confirmation will be sent to <strong>{formData.email}</strong>
           </p>
           <BrutalButton href="/shop">Continue Shopping</BrutalButton>
         </motion.div>
@@ -135,134 +210,88 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="px-4 py-8 max-w-6xl mx-auto">
-      <h1 className="font-mono text-4xl md:text-5xl font-bold uppercase mb-8">
-        Checkout
-      </h1>
+    <>
+      {/* Load Razorpay SDK */}
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
 
-      {error && (
-        <div className="border-brutal border-3 border-brutal-black bg-toxic p-4 mb-8" style={{ boxShadow: "4px 4px 0 #0A0A0A" }}>
-          <p className="font-mono text-sm uppercase text-brutal-black">
-            ERROR: {error}
-          </p>
-        </div>
-      )}
+      <div className="px-4 py-8 max-w-6xl mx-auto">
+        <h1 className="font-mono text-4xl md:text-5xl font-bold uppercase mb-8">Checkout</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <h2 className="font-mono text-xl font-bold uppercase mb-4">
-            Shipping Info
-          </h2>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <BrutalInput
-              placeholder="First Name"
-              name="firstName"
-              value={formData.firstName}
-              onChange={handleInputChange}
-              required
-            />
-            <BrutalInput
-              placeholder="Last Name"
-              name="lastName"
-              value={formData.lastName}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-          
-          <BrutalInput
-            type="email"
-            placeholder="Email"
-            name="email"
-            value={formData.email}
-            onChange={handleInputChange}
-            required
-          />
-          <BrutalInput
-            type="tel"
-            placeholder="Phone"
-            name="phone"
-            value={formData.phone}
-            onChange={handleInputChange}
-            required
-          />
-          <BrutalInput
-            placeholder="Address"
-            name="address"
-            value={formData.address}
-            onChange={handleInputChange}
-            required
-          />
-          
-          <div className="grid grid-cols-2 gap-4">
-            <BrutalInput
-              placeholder="City"
-              name="city"
-              value={formData.city}
-              onChange={handleInputChange}
-            />
-            <BrutalInput
-              placeholder="State"
-              name="state"
-              value={formData.state}
-              onChange={handleInputChange}
-            />
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <BrutalInput
-              placeholder="PIN Code"
-              name="pincode"
-              value={formData.pincode}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-
-          <h2 className="font-mono text-xl font-bold uppercase mb-4 pt-4">
-            Payment
-          </h2>
-          
-          <BrutalInput placeholder="Card Number" disabled className="opacity-50" />
-          <div className="grid grid-cols-2 gap-4">
-            <BrutalInput placeholder="MM/YY" disabled className="opacity-50" />
-            <BrutalInput placeholder="CVC" disabled className="opacity-50" />
-          </div>
-
-          <p className="font-mono text-xs text-brutal-black/50">
-            * Payment integration pending. This is a demo checkout.
-          </p>
-
-          <BrutalButton
-            variant="accent"
-            className="w-full mt-8"
-            disabled={loading}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="border-brutal border-3 border-accent bg-accent/10 p-4 mb-8"
+            style={{ boxShadow: "4px 4px 0 #FF3E00" }}
           >
-            {loading ? "Transmitting..." : "Place Order"}
-          </BrutalButton>
-        </form>
+            <p className="font-mono text-sm uppercase text-accent">⚠ {error}</p>
+          </motion.div>
+        )}
 
-        <div className="bg-cream border-brutal border-3 border-brutal-black p-6 h-fit" style={{ boxShadow: "4px 4px 0 #0A0A0A" }}>
-          <h2 className="font-mono text-xl font-bold uppercase mb-4">Order Summary</h2>
-          
-          <div className="space-y-3 mb-6">
-            {items.map(item => (
-              <div key={item.id} className="flex justify-between text-sm">
-                <span className="font-sans">{item.name} x{item.quantity}</span>
-                <span className="font-mono">{formatPrice(item.price * item.quantity)}</span>
-              </div>
-            ))}
-          </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <h2 className="font-mono text-xl font-bold uppercase mb-4">Shipping Info</h2>
 
-          <div className="border-t-3 border-brutal-black pt-3">
-            <div className="flex justify-between font-mono text-xl font-bold">
-              <span>Total</span>
-              <span className="text-accent">{formatPrice(totalPrice)}</span>
+            <div className="grid grid-cols-2 gap-4">
+              <BrutalInput placeholder="First Name" name="firstName" value={formData.firstName} onChange={handleInputChange} required />
+              <BrutalInput placeholder="Last Name" name="lastName" value={formData.lastName} onChange={handleInputChange} required />
             </div>
+            <BrutalInput type="email" placeholder="Email" name="email" value={formData.email} onChange={handleInputChange} required />
+            <BrutalInput type="tel" placeholder="Phone (10 digits)" name="phone" value={formData.phone} onChange={handleInputChange} required />
+            <BrutalInput placeholder="Full Address" name="address" value={formData.address} onChange={handleInputChange} required />
+
+            <div className="grid grid-cols-2 gap-4">
+              <BrutalInput placeholder="City" name="city" value={formData.city} onChange={handleInputChange} required />
+              <BrutalInput placeholder="State" name="state" value={formData.state} onChange={handleInputChange} required />
+            </div>
+
+            <BrutalInput placeholder="PIN Code" name="pincode" value={formData.pincode} onChange={handleInputChange} required />
+
+            <div className="border-brutal border-3 border-brutal-black/30 p-4 bg-brutal-black/5">
+              <p className="font-mono text-xs uppercase text-brutal-black/60 mb-2">Secure Payment via Razorpay</p>
+              <p className="font-sans text-sm text-brutal-black/80">
+                You will be redirected to Razorpay&apos;s secure checkout to complete your payment.
+                Supports UPI, Cards, NetBanking.
+              </p>
+            </div>
+
+            <BrutalButton variant="accent" className="w-full mt-4" disabled={loading}>
+              {loading ? "Preparing Payment..." : `Pay ${formatPrice(totalPrice)}`}
+            </BrutalButton>
+          </form>
+
+          {/* Order Summary */}
+          <div className="bg-cream border-brutal border-3 border-brutal-black p-6 h-fit" style={{ boxShadow: "4px 4px 0 #0A0A0A" }}>
+            <h2 className="font-mono text-xl font-bold uppercase mb-4">Order Summary</h2>
+
+            <div className="space-y-3 mb-6">
+              {items.map((item, idx) => (
+                <div key={`${item.id}-${idx}`} className="flex items-center gap-3 text-sm">
+                  {item.designImageUrl && (
+                    <img src={item.designImageUrl} alt="Design" className="w-10 h-10 object-cover border border-brutal-black/20" />
+                  )}
+                  <div className="flex-1">
+                    <span className="font-sans block">{item.name} ×{item.quantity}</span>
+                    {item.designId && <span className="font-mono text-[10px] uppercase text-accent">✦ Custom</span>}
+                  </div>
+                  <span className="font-mono">{formatPrice(item.price * item.quantity)}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t-3 border-brutal-black pt-3">
+              <div className="flex justify-between font-mono text-xl font-bold">
+                <span>Total</span>
+                <span className="text-accent">{formatPrice(totalPrice)}</span>
+              </div>
+            </div>
+
+            <p className="font-sans text-xs text-brutal-black/40 mt-4">
+              Prices include all taxes. Shipping calculated at payment.
+            </p>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -33,14 +33,19 @@ export default function Navbar() {
           <Link href="/" className="font-mono text-sm uppercase hover:text-accent transition-colors">
             Home
           </Link>
+          <Link href="/shop" className="font-mono text-sm uppercase hover:text-accent transition-colors">
+            Shop
+          </Link>
+          {isSignedIn && (
+            <Link href="/account/orders" className="font-mono text-sm uppercase hover:text-accent transition-colors">
+              My Orders
+            </Link>
+          )}
           {isAdmin && (
             <Link href="/admin" className="font-mono text-sm uppercase text-accent font-bold hover:text-brutal-black transition-colors">
               Admin
             </Link>
           )}
-          <Link href="/shop" className="font-mono text-sm uppercase hover:text-accent transition-colors">
-            Shop
-          </Link>
           <Link 
             href="/cart" 
             className="font-mono text-sm uppercase flex items-center gap-2 hover:text-accent transition-colors"
@@ -99,6 +104,22 @@ export default function Navbar() {
               >
                 Home
               </Link>
+              <Link 
+                href="/shop" 
+                className="font-mono text-xl uppercase border-brutal border-3 p-4 text-center bg-cream hover:bg-accent hover:text-cream transition-colors"
+                onClick={() => setMobileOpen(false)}
+              >
+                Shop
+              </Link>
+              {isSignedIn && (
+                <Link 
+                  href="/account/orders" 
+                  className="font-mono text-xl uppercase border-brutal border-3 p-4 text-center bg-cream hover:bg-accent hover:text-cream transition-colors"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  My Orders
+                </Link>
+              )}
               {isAdmin && (
                 <Link 
                   href="/admin" 
@@ -108,13 +129,6 @@ export default function Navbar() {
                   Admin Dashboard
                 </Link>
               )}
-              <Link 
-                href="/shop" 
-                className="font-mono text-xl uppercase border-brutal border-3 p-4 text-center bg-cream hover:bg-accent hover:text-cream transition-colors"
-                onClick={() => setMobileOpen(false)}
-              >
-                Shop
-              </Link>
               <Link 
                 href="/cart" 
                 className="font-mono text-xl uppercase border-brutal border-3 p-4 text-center bg-cream hover:bg-accent hover:text-cream transition-colors flex justify-center items-center gap-3"
