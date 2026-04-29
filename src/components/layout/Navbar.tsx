@@ -13,7 +13,10 @@ import {
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { totalItems } = useCart();
-  const { isSignedIn } = useUser();
+  const { isSignedIn, user } = useUser();
+
+  const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+  const isAdmin = isSignedIn && user?.emailAddresses[0]?.emailAddress === adminEmail;
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-cream border-b-brutal border-brutal border-b-3">
@@ -29,6 +32,11 @@ export default function Navbar() {
           <Link href="/" className="font-mono text-sm uppercase hover:text-accent transition-colors">
             Home
           </Link>
+          {isAdmin && (
+            <Link href="/admin" className="font-mono text-sm uppercase text-accent font-bold hover:text-brutal-black transition-colors">
+              Admin
+            </Link>
+          )}
           <Link href="/shop" className="font-mono text-sm uppercase hover:text-accent transition-colors">
             Shop
           </Link>
@@ -90,6 +98,15 @@ export default function Navbar() {
               >
                 Home
               </Link>
+              {isAdmin && (
+                <Link 
+                  href="/admin" 
+                  className="font-mono text-xl uppercase border-brutal border-3 p-4 text-center bg-accent text-cream hover:bg-brutal-black transition-colors"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Admin Dashboard
+                </Link>
+              )}
               <Link 
                 href="/shop" 
                 className="font-mono text-xl uppercase border-brutal border-3 p-4 text-center bg-cream hover:bg-accent hover:text-cream transition-colors"
