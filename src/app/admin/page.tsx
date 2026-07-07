@@ -1,5 +1,5 @@
 import AdminForm from "@/app/admin/AdminForm";
-import { auth, getUser } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 
 /**
  * Server Component for the Admin panel.
@@ -8,14 +8,14 @@ import { auth, getUser } from "@clerk/nextjs/server";
  */
 export default async function AdminPage() {
   // Authenticate the request using Clerk's server SDK
-  const { userId } = auth();
+  const { userId } = await auth();
   if (!userId) {
     // Not signed in – render a minimal unauthorized message (could also redirect)
     return <p>Unauthenticated – please sign in to access the admin dashboard.</p>;
   }
 
   // Retrieve the full user record to inspect the email address
-  const user = await getUser(userId);
+  const user = await currentUser();
   const email = user?.emailAddresses?.[0]?.emailAddress ?? "";
 
   // Verify that the email matches the ADMIN_EMAIL env var (authorised admin)
