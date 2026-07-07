@@ -5,11 +5,11 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { log } from "@/lib/logger";
 
 async function requireAdmin(userId: string): Promise<boolean> {
-  const adminEmail = (process.env.ADMIN_EMAIL || "varungupta010307@gmail.com").toLowerCase();
+  const adminRole = (process.env.ADMIN_ROLE ?? "admin").toLowerCase();
   const client = await clerkClient();
   const user = await client.users.getUser(userId);
-  const email = user?.primaryEmailAddress?.emailAddress?.toLowerCase();
-  return email === adminEmail;
+  const role = (user?.publicMetadata?.role as string | undefined)?.toLowerCase();
+  return role === adminRole;
 }
 
 /**
@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
 
   // Trigger Qikink submission
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  // Use internal API with rate limiting
   const res = await fetch(`${appUrl}/api/orders/submit`, {
     method: "POST",
     headers: {

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Marquee from "../ui/Marquee";
-
+import { footerNav } from "@/config/navigation";
 export default function Footer() {
   return (
     <footer className="bg-cream border-t-brutal border-t-3 border-brutal mt-auto">
@@ -20,26 +20,13 @@ export default function Footer() {
         <div>
           <h4 className="font-mono text-sm font-bold uppercase mb-4">Links</h4>
           <ul className="space-y-2">
-            <li>
-              <Link href="/" className="font-sans text-sm hover:text-accent transition-colors">
-                Home
-              </Link>
-            </li>
-            <li>
-              <Link href="/shop" className="font-sans text-sm hover:text-accent transition-colors">
-                Shop
-              </Link>
-            </li>
-            <li>
-              <Link href="/cart" className="font-sans text-sm hover:text-accent transition-colors">
-                Cart
-              </Link>
-            </li>
-            <li>
-              <Link href="/checkout" className="font-sans text-sm hover:text-accent transition-colors">
-                Checkout
-              </Link>
-            </li>
+            {footerNav.filter(item => item.enabled).map((item) => (
+              <li key={item.href}>
+                <Link href={item.href} className="font-sans text-sm hover:text-accent transition-colors">
+                  {item.label}
+                </Link>
+              </li>
+            ))}
           </ul>
         </div>
 

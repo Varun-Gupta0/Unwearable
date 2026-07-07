@@ -30,7 +30,7 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en" className={`${spaceMono.variable} ${inter.variable} h-full antialiased`}>
-        <body className="min-h-full flex flex-col bg-cream text-brutal-black">
+        <body className="min-h-full flex flex-col bg-cream text-brutal-black" suppressHydrationWarning>
           <CartProvider>
             <Navbar />
             <main className="flex-1 pt-[72px]">

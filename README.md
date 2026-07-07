@@ -113,7 +113,7 @@ CREATE TABLE public.designs (
 |----------|-------------|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public Supabase key |
-| `ADMIN_EMAIL` / `NEXT_PUBLIC_ADMIN_EMAIL` | Email that may access the admin dashboard |
+| `ADMIN_EMAIL` | Email that may access the admin dashboard |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key |
 | `CLERK_SECRET_KEY` | Clerk secret key (server) |
 | `QIKINK_CLIENT_ID` / `QIKINK_CLIENT_SECRET` | Qikink credentials |
@@ -133,7 +133,7 @@ npm install
 
 # Set up .env.local (see table above) and add:
 # ADMIN_EMAIL=varungupta010307@gmail.com
-# NEXT_PUBLIC_ADMIN_EMAIL=varungupta010307@gmail.com
+
 
 # Run the dev server
 npm run dev   # http://localhost:3000

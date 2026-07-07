@@ -104,7 +104,7 @@ export default function TemplateForm({ productSlug, onSuccess }: TemplateFormPro
         />
         {imagePreview && (
           <div className="mt-3 border-brutal border-3 inline-block">
-            <img src={imagePreview} alt="Preview" className="h-48 object-contain" />
+            <img src={imagePreview} alt="" className="h-48 object-contain" />
           </div>
         )}
         <p className="font-mono text-xs text-brutal-black/50 mt-2 uppercase">
@@ -121,7 +121,7 @@ export default function TemplateForm({ productSlug, onSuccess }: TemplateFormPro
         {/* Image reference */}
         {imagePreview && (
           <div className="relative inline-block border-brutal border-2">
-            <img src={imagePreview} alt="Reference" style={{ width: 300, height: 300, objectFit: "contain" }} />
+            <img src={imagePreview} alt="" style={{ width: 300, height: 300, objectFit: "contain" }} />
             {placements.map((slot) => (
               <div
                 key={slot.id}
@@ -174,7 +174,7 @@ export default function TemplateForm({ productSlug, onSuccess }: TemplateFormPro
             className="flex items-center justify-between p-3 border-brutal border-2 bg-cream/50 font-mono text-xs uppercase">
             <span className="font-bold">{slot.label}</span>
             <span className="text-brutal-black/50">({slot.x},{slot.y}) {slot.width}×{slot.height} {slot.type}</span>
-            <button type="button" onClick={() => removeSlot(slot.id)} className="text-accent hover:underline">✕</button>
+            <button type="button" aria-label="Remove slot" onClick={() => removeSlot(slot.id)} className="text-accent hover:underline">✕</button>
           </motion.div>
         ))}
       </div>
@@ -203,7 +203,7 @@ export default function TemplateForm({ productSlug, onSuccess }: TemplateFormPro
               className="flex items-center gap-2 border-brutal border-2 p-2 bg-cream">
               <div className="w-6 h-6 border border-brutal-black" style={{ backgroundColor: col.hex }} />
               <span className="font-mono text-xs uppercase">{col.label}</span>
-              <button type="button" onClick={() => removeColor(col.id)} className="font-mono text-xs text-accent">✕</button>
+              <button type="button" aria-label="Remove color" onClick={() => removeColor(col.id)} className="font-mono text-xs text-accent">✕</button>
             </motion.div>
           ))}
         </div>

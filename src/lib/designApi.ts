@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { supabaseAdmin } from "./supabaseAdmin";
 import type { Template, Design } from "@/types";
 
 // ─── Template Queries ─────────────────────────────────────────────────────────

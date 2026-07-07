@@ -268,7 +268,7 @@ export default function CheckoutPage() {
               {items.map((item, idx) => (
                 <div key={`${item.id}-${idx}`} className="flex items-center gap-3 text-sm">
                   {item.designImageUrl && (
-                    <img src={item.designImageUrl} alt="Design" className="w-10 h-10 object-cover border border-brutal-black/20" />
+                    <img src={item.designImageUrl} alt={`${item.name} design`} className="w-10 h-10 object-cover border border-brutal-black/20" />
                   )}
                   <div className="flex-1">
                     <span className="font-sans block">{item.name} ×{item.quantity}</span>

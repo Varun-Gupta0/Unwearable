@@ -30,7 +30,7 @@ export default function CartItemRow({ item }: CartItemProps) {
     >
       <div className="w-20 h-20 bg-brutal-black/5 border-brutal border-3 border-brutal-black flex items-center justify-center font-mono text-2xl text-brutal-black/30 overflow-hidden">
         {item.designImageUrl ? (
-          <img src={item.designImageUrl} alt="Custom design" className="w-full h-full object-cover" />
+          <img src={item.designImageUrl} alt={`${item.name} design`} className="w-full h-full object-cover" />
         ) : (
           item.name.charAt(0)
         )}
@@ -44,21 +44,23 @@ export default function CartItemRow({ item }: CartItemProps) {
             ✦ Custom Design
           </span>
         )}
-        <p className="font-sans text-xs text-brutal-black/50 mt-0.5">
+        <nav aria-label="Cart item size" className="font-mono text-sm uppercase text-brutal-black/50 mb-2">
           Size: {item.selectedSize}
-        </p>
+        </nav>
       </div>
 
       <div className="flex items-center gap-2">
-        <button
+        <button type="button"
           onClick={() => updateQuantity(itemKey, item.quantity - 1)}
+          aria-label="Decrease quantity"
           className="w-8 h-8 border-brutal border-3 border-brutal-black font-mono font-bold hover:bg-brutal-black hover:text-cream transition-colors"
         >
           -
         </button>
         <span className="w-8 text-center font-mono font-bold">{item.quantity}</span>
-        <button
+        <button type="button"
           onClick={() => updateQuantity(itemKey, item.quantity + 1)}
+          aria-label="Increase quantity"
           className="w-8 h-8 border-brutal border-3 border-brutal-black font-mono font-bold hover:bg-brutal-black hover:text-cream transition-colors"
         >
           +
@@ -69,8 +71,9 @@ export default function CartItemRow({ item }: CartItemProps) {
         {formatPrice(item.price * item.quantity)}
       </div>
 
-      <button
+      <button type="button"
         onClick={() => removeItem(itemKey)}
+        aria-label="Remove item"
         className="w-8 h-8 border-brutal border-3 border-brutal-black font-mono hover:bg-accent hover:text-cream transition-colors"
       >
         ✕

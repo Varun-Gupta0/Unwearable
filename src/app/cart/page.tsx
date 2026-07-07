@@ -1,52 +1,37 @@
-"use client";
+import React from "react";
+import { auth } from "@clerk/nextjs/server";
+import CartClient from "./CartClient";
+import RecentOrders from "@/components/account/RecentOrders";
+import FeatureCard from "@/components/account/FeatureCard";
+import { ShoppingBag, Heart } from "lucide-react";
 
-import { motion, AnimatePresence } from "framer-motion";
-import { useCart } from "@/context/CartContext";
-import CartItemRow from "@/components/cart/CartItem";
-import CartSummary from "@/components/cart/CartSummary";
-import BrutalButton from "@/components/ui/BrutalButton";
-
-export default function CartPage() {
-  const { items } = useCart();
+export default async function CartPage() {
+  const { userId } = await auth();
 
   return (
-    <div className="px-4 py-8 max-w-4xl mx-auto">
-      <h1 className="font-mono text-4xl md:text-5xl font-bold uppercase mb-8">
-        Your Cart
-      </h1>
+    <div className="flex flex-col gap-12">
+      <CartClient />
 
-      {items.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center py-20"
-        >
-          <p className="font-mono text-3xl md:text-5xl font-bold uppercase mb-4 text-brutal-black/30">
-            Your cart is void
-          </p>
-          <p className="font-sans text-brutal-black/60 mb-8">
-            Nothing to see here. Go add some regrets.
-          </p>
-          <BrutalButton href="/shop">
-            Shop Now
-          </BrutalButton>
-        </motion.div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            <AnimatePresence mode="popLayout">
-              {items.map((item, idx) => (
-                <CartItemRow
-                  key={`${item.id}-${item.selectedSize}-${item.selectedColorId}-${item.designId ?? idx}`}
-                  item={item}
-                />
-              ))}
-            </AnimatePresence>
+      {userId && (
+        <div className="px-4 py-8 max-w-4xl mx-auto w-full border-t-brutal border-t-3 border-brutal-black pt-12">
+          <h2 className="font-mono text-3xl font-bold uppercase mb-8">
+            Your Account
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+            <FeatureCard
+              title="Saved Designs"
+              description="Create and manage your own designs."
+              icon={<ShoppingBag className="h-6 w-6" />}
+            />
+            <FeatureCard
+              title="Wishlist"
+              description="Save items you love for later."
+              icon={<Heart className="h-6 w-6" />}
+            />
           </div>
 
-          <div className="lg:col-span-1">
-            <CartSummary />
-          </div>
+          <RecentOrders userId={userId} />
         </div>
       )}
     </div>

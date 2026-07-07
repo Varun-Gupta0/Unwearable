@@ -25,6 +25,7 @@ export default function StepSelector() {
 
           return (
             <button
+              type="button"
               key={num}
               onClick={() => isClickable && goToStep(num)}
               disabled={!isClickable}

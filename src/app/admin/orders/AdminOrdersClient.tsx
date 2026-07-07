@@ -43,7 +43,7 @@ function OrderDetailModal({ order, onClose, onRetry }: OrderDetailModalProps) {
               {order.status}
             </span>
           </div>
-          <button onClick={onClose} className="w-8 h-8 border-brutal border-3 font-mono hover:bg-accent hover:text-cream transition-colors">✕</button>
+          <button type="button" aria-label="Close dialog" onClick={onClose} className="w-8 h-8 border-brutal border-3 font-mono hover:bg-accent hover:text-cream transition-colors">✕</button>
         </div>
 
         <div className="p-6 space-y-6">
@@ -66,7 +66,7 @@ function OrderDetailModal({ order, onClose, onRetry }: OrderDetailModalProps) {
               {order.items?.map((item, i) => (
                 <div key={i} className="flex items-center gap-4 p-3 border-brutal border-2 border-brutal-black/30">
                   {item.designImageUrl && (
-                    <img src={item.designImageUrl} alt="Design" className="w-14 h-14 object-cover border border-brutal-black/30" />
+                    <img src={item.designImageUrl} alt={`${item.name} design`} className="w-14 h-14 object-cover border border-brutal-black/30" />
                   )}
                   <div className="flex-1">
                     <p className="font-mono text-sm font-bold">{item.name}</p>

@@ -21,7 +21,7 @@ export default function AdminTemplatesPage() {
     <div className="px-4 py-8 max-w-5xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <nav className="font-mono text-sm uppercase text-brutal-black/50 mb-2">
+        <nav aria-label="Admin Navigation" className="font-mono text-sm uppercase text-brutal-black/50 mb-2">
           <a href="/admin" className="hover:text-accent">Admin</a>
           <span className="mx-2">/</span>
           <span>Templates</span>
@@ -37,6 +37,7 @@ export default function AdminTemplatesPage() {
       {/* Create template section */}
       <div className="border-brutal border-3 mb-8 overflow-hidden">
         <button
+          type="button"
           onClick={() => setShowForm((v) => !v)}
           className="w-full flex items-center justify-between p-5 bg-brutal-black text-cream font-mono text-sm uppercase hover:bg-accent transition-colors"
         >
