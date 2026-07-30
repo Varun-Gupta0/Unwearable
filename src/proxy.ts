@@ -13,7 +13,11 @@ const isProtectedRoute = createRouteMatcher([
 ]);
 
 const isApiRoute = createRouteMatcher(['/api(.*)']);
-const isPublicApiRoute = createRouteMatcher(['/api/public(.*)']);
+const isPublicApiRoute = createRouteMatcher([
+  '/api/public(.*)',
+  '/api/payment/webhook',
+  '/api/orders/submit',
+]);
 
 export default clerkMiddleware(async (auth, req) => {
   const url = new URL(req.url);

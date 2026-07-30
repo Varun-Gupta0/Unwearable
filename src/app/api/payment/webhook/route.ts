@@ -68,16 +68,31 @@ export async function POST(request: NextRequest) {
           .update({ status: "paid" })
           .eq("id", order.id);
 
-        // Trigger Qikink submission
+        // Trigger Qikink submission (awaited to prevent Vercel termination)
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-        fetch(`${appUrl}/api/orders/submit`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-internal-key": process.env.INTERNAL_API_KEY ?? "",
-          },
-          body: JSON.stringify({ order_id: order.id }),
-        }).catch(() => {});
+        try {
+          const response = await fetch(`${appUrl}/api/orders/submit`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-internal-key": process.env.INTERNAL_API_KEY ?? "",
+            },
+            body: JSON.stringify({ order_id: order.id }),
+            signal: AbortSignal.timeout(15_000),
+          });
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            await log("order_submit_trigger", `Webhook order submission returned status ${response.status}: ${errorData.error || 'Unknown error'}`, {
+              severity: "error",
+              order_id: order.id,
+            });
+          }
+        } catch (err: any) {
+          await log("order_submit_trigger", `Failed to trigger order submission via webhook: ${err.message}`, {
+            severity: "error",
+            order_id: order.id,
+          });
+        }
       }
     }
   }

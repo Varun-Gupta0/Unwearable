@@ -36,7 +36,7 @@ export async function getProductStoreSku(slug: string, colorId?: string, sizeId?
     // Fallback to local products
     const localProduct = localProducts.find(p => p.slug === slug);
     if (localProduct) {
-      console.log(`Using local SKU for slug ${slug}: ${localProduct.sku}`);
+
       return localProduct.sku;
     }
 

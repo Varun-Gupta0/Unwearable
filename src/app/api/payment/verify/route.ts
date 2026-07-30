@@ -73,23 +73,33 @@ export async function POST(request: NextRequest) {
       .update({ status: "paid" })
       .eq("id", order_id);
 
-    // ── 5. Async: trigger Qikink submission (fire and forget) ────────────
-    //    We do NOT await this — user gets success response immediately
+    // ── 5. Trigger Qikink submission (awaited to prevent Vercel termination) ──
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    fetch(`${appUrl}/api/orders/submit`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-internal-key": process.env.INTERNAL_API_KEY ?? "",
-      },
-      body: JSON.stringify({ order_id }),
-    }).catch((err) => {
-      log("order_submit_trigger", `Failed to trigger order submission: ${err.message}`, {
+    try {
+      const response = await fetch(`${appUrl}/api/orders/submit`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-internal-key": process.env.INTERNAL_API_KEY ?? "",
+        },
+        body: JSON.stringify({ order_id }),
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        await log("order_submit_trigger", `Order submission returned status ${response.status}: ${errorData.error || 'Unknown error'}`, {
+          severity: "error",
+          order_id,
+          user_id: userId,
+        });
+      }
+    } catch (err: any) {
+      await log("order_submit_trigger", `Failed to trigger order submission: ${err.message}`, {
         severity: "error",
         order_id,
         user_id: userId,
       });
-    });
+    }
 
     return NextResponse.json({ success: true, order_id });
   } catch (error) {
